@@ -14,37 +14,23 @@
     #  Source helper functions
     source("helpers/Nmix_utility_funs.R")
 
-    #  Load data
-    dat <- read_csv("C:/Users/josh.nowak/Documents/Leah_frogs/data.csv")
-################################################################################
-    #  Create lookup dictionary for sites
-    uni_site <- unique(dat$Site)
-    site_dic <- tibble(
-      site_nm = uni_site,
-      site_num = 1:length(uni_site)
-    )
+    #  Load observation data
+    raw_dat <- read_csv("C:/Users/josh.nowak/Documents/Leah_frogs/data.csv")
+    
+    #  Load covariate data
+    cov_dat <- read_csv(
+      "C:/Users/josh.nowak/Documents/Leah_frogs/BR_site_covariates.csv"
+      ) %>%
+      mutate(
+        site = site_dic$site_num[match(SiteName, site_dic$site_nm)]
+      )
+    
+    #  Load dics
+    load("data/site_dic.RData")
 ################################################################################
     #  Morph observation data
-    y_obs <- dat %>%
-      select(Site, TrappingOccasion, Year, contains("total")) %>%
-      select(-TotalNumTrapsPredators, -TotalNumSweeps) %>%
-      gather(
-        Species, Count, -Site, -TrappingOccasion, -Year, -TotalNumTraps
-      ) %>%
-      transmute(
-        sp = as.numeric(as.factor(Species)),
-        site = site_dic$site_num[match(Site, site_dic$site_nm)],
-        year = Year - min(Year) + 1,
-        occ = TrappingOccasion,
-        prim = id_primary(TrappingOccasion),
-        cnt = Count,
-        n_trap = TotalNumTraps 
-      ) %>%
-      group_by(sp, site, year, prim) %>%
-      mutate(
-        sec = 1:n()
-      ) %>%
-      select(sp:prim, sec, cnt, n_trap)
+    y_obs <- morph_data(raw_dat, site_dic) %>%
+      left_join(., cov_dat, by = "")
 ################################################################################
     #  Call model on grouped data, species by year
     #  Remove species grouping if using multi-species model
@@ -78,6 +64,27 @@
           n.thin = 1
         ))
       )
+      
+    #  Example call with covariate and random effect
+    
+    #  This won't work for now because site names will end up being NA due to 
+    #   errors in the data
+    
+    fit3 <- y_obs %>%
+      group_by(sp, year) %>%
+      do(fit = 
+        try(call_jags(
+          x = .,
+          covs = "n_trap",
+          model.file = "models/Nmix_sN_trapD.txt",
+          n.chains = 3,
+          n.iter = 500,
+          n.burnin = 100, 
+          n.thin = 1
+        ))
+      )
+      
+    #  
 ################################################################################
     #  TODO
     #   multi-species, optional

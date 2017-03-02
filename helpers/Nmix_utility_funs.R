@@ -1,3 +1,33 @@
+    #  Helper functions related to Leah's dissertation
+    #  Josh Nowak
+    #  03/2017
+    #  Lots of hard coded one off solutions
+################################################################################
+    morph_data <- function(x, site_dic){
+      out <- x %>%
+        select(Site, TrappingOccasion, Year, contains("total")) %>%
+        select(-TotalNumTrapsPredators, -TotalNumSweeps) %>%
+        gather(
+          Species, Count, -Site, -TrappingOccasion, -Year, -TotalNumTraps
+        ) %>%
+        transmute(
+          sp = as.numeric(as.factor(Species)),
+          site = site_dic$site_num[match(Site, site_dic$site_nm)],
+          year = Year - min(Year) + 1,
+          occ = TrappingOccasion,
+          prim = id_primary(TrappingOccasion),
+          cnt = Count,
+          n_trap = TotalNumTraps
+        ) %>%
+        group_by(sp, site, year, prim) %>%
+        mutate(
+          sec = 1:n()
+        ) %>%
+        select(sp:prim, sec, cnt, n_trap)
+
+    return(out)
+    }
+################################################################################
     id_primary <- function(x){
     
       tmp <- cut(x, breaks = c(0, 2, 4, 6, 8), labels = 1:4)
@@ -44,7 +74,11 @@
       }
 
       #  Parameters to monitor
-      parms <- c("Lambda", "Mean_n", "Mean_p", "P", "N", paste0(covs, "_eff"))
+      parms <- c("Lambda", "Mean_n", "Mean_p", "P", "N", "Site_eff")
+      
+      if(!is.null(covs)){
+        parms <- c(parms, paste(covs, "eff", sep = "_"))
+      }
       
       #  Rename sites to catch missed visits
       new_site <- as.numeric(as.factor(x$site))
