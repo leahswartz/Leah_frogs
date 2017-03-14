@@ -31,7 +31,7 @@
 ################################################################################
     #  Morph observation data
     y_obs <- morph_data(raw_dat, site_dic) %>%
-      left_join( .,cov_dat, by = "")
+      left_join( .,cov_dat, by="site")
 ################################################################################
     #  Call model on grouped data, species by year
     #  Remove species grouping if using multi-species model
@@ -66,10 +66,7 @@
         ))
       )
       
-    #  Example call with covariate and random effect
-    
-    #  This won't work for now because site names will end up being NA due to 
-    #   errors in the data
+    #  Fit 3=random effect of site, trap effect on detection
     
     fit3 <- y_obs %>%
       group_by(sp, year) %>%
@@ -84,7 +81,20 @@
           n.thin = 1
         ))
       )
-      
+    # Fit 4 = random effect of site, trap effect on detection, 
+    fit3 <- y_obs %>%
+      group_by(sp, year) %>%
+      do(fit = 
+           try(call_jags(
+             x = .,
+             covs = "n_trap","type",
+             model.file = "models/Nmix_sNtN_trapD.txt",
+             n.chains = 3,
+             n.iter = 500,
+             n.burnin = 100, 
+             n.thin = 1
+           ))
+      )
     #  
 ################################################################################
     #  TODO
@@ -92,3 +102,6 @@
     #   random effect on site
     #   accommodate primary and secondary occassions
     #   add covariates
+    ##look at zero inflation
+    ##add occupancy part to account for zeros
+    ##mcmc plots
