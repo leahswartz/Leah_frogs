@@ -9,28 +9,29 @@
     require(dplyr)
 ################################################################################
     #  Set working directory
-    setwd("C:/Users/josh.nowak/Documents/GitHub/Leah_frogs")
+    setwd("~/Leah_frogs")
+
 
     #  Source helper functions
-    source("helpers/Nmix_utility_funs.R")
+    source("~/Leah_frogs/helpers/Nmix_utility_funs.R")
 
     #  Load observation data
-    raw_dat <- read_csv("C:/Users/josh.nowak/Documents/Leah_frogs/data.csv")
+    raw_dat <- read_csv("~/Blackrock/Data/TadpolePaper/2015AND2016TrappingData.csv")
     
     #  Load covariate data
-    cov_dat <- read_csv(
-      "C:/Users/josh.nowak/Documents/Leah_frogs/BR_site_covariates.csv"
-      ) %>%
+    cov_dat <- read.csv("~/Blackrock/Data/Invert Paper/BR_site_covariates.csv") %>%
       mutate(
         site = site_dic$site_num[match(SiteName, site_dic$site_nm)]
-      )
+      )%>%
+      filter(site!="NA")%>%
+      mutate(type=as.numeric(WetlandType))
     
     #  Load dics
     load("data/site_dic.RData")
 ################################################################################
     #  Morph observation data
     y_obs <- morph_data(raw_dat, site_dic) %>%
-      left_join(., cov_dat, by = "")
+      left_join( .,cov_dat, by = "")
 ################################################################################
     #  Call model on grouped data, species by year
     #  Remove species grouping if using multi-species model

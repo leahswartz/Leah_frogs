@@ -5,13 +5,14 @@
     require(readr)
     require(dplyr)
     #  Set working directory
-    setwd("C:/Users/josh.nowak/Documents/GitHub/Leah_frogs")
+    setwd("~/Leah_frogs")
 
     #  Source helper functions
     source("helpers/Nmix_utility_funs.R")
 
     #  Load data
-    dat <- read_csv("C:/Users/josh.nowak/Documents/Leah_frogs/data.csv")
+    dat <- read.csv("~/Blackrock/Data/TadpolePaper/2015AND2016TrappingData.csv")
+   
 ################################################################################
     #  Create lookup dictionary for sites
     uni_site <- unique(dat$Site)
