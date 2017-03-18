@@ -31,7 +31,9 @@
 ################################################################################
     #  Morph observation data
     y_obs <- morph_data(raw_dat, site_dic) %>%
-      left_join( .,cov_dat, by="site")
+      left_join( .,cov_dat, by="site") %>%
+      mutate(created=if_else(type=="1",1,0)) %>%
+      mutate(impacted=if_else(type=="2",1,0))
 ################################################################################
     #  Call model on grouped data, species by year
     #  Remove species grouping if using multi-species model
@@ -81,13 +83,13 @@
           n.thin = 1
         ))
       )
-    # Fit 4 = random effect of site, trap effect on detection, 
-    fit3 <- y_obs %>%
+    # Fit 4 = random effect of site, trap effect on detection, wetland type effect on abundance
+    fit4 <- y_obs %>%
       group_by(sp, year) %>%
       do(fit = 
            try(call_jags(
              x = .,
-             covs = "n_trap","type",
+             covs = c("n_trap","impacted","created"),
              model.file = "models/Nmix_sNtN_trapD.txt",
              n.chains = 3,
              n.iter = 500,
