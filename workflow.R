@@ -33,7 +33,9 @@
     y_obs <- morph_data(raw_dat, site_dic) %>%
       left_join( .,cov_dat, by="site") %>%
       mutate(created=if_else(type=="1",1,0)) %>%
-      mutate(impacted=if_else(type=="2",1,0))
+      mutate(impacted=if_else(type=="2",1,0))%>%
+      mutate(reference=if_else(type=="3",1,0))
+    covar_nm <- list("n_trap","ElevationM")
 ################################################################################
     #  Call model on grouped data, species by year
     #  Remove species grouping if using multi-species model
@@ -89,7 +91,7 @@
       do(fit = 
            try(call_jags(
              x = .,
-             covs = c("n_trap","impacted","created"),
+             covs = "n_trap","impacted","created",
              model.file = "models/Nmix_sNtN_trapD.txt",
              n.chains = 3,
              n.iter = 500,

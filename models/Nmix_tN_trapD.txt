@@ -12,35 +12,27 @@ model{
   #  Mean detection
   Mean_p ~ dnorm(0, 0.35)T(-10, 10)
   
-  #trap covariate
   n_trap_eff ~ dnorm(0, 0.01)
-
+  created_eff ~ dnorm(0,0.01)
+  impacted_eff ~ dnorm(0,0.01)
   
-  #  Random effect prior
-  Tau_site <- 1/(Sd_site^2)
-  Sd_site ~ dunif(0, 200)
-  for(s in 1:nsite){
-    Site_eff[s] ~ dnorm(0, Tau_site)
-  }
-      
   #  Linear predictors
-  #  Process - abundance
   for(s in 1:nsite){
-    log(Lambda[s]) <- Mean_n + Site_eff[s] 
+    log(Lambda[s]) <- Mean_n + impacted_eff*impacted[s]+created_ef*created[s]
     for(t in 1:ntimes[s]){
       logit(P[s, t]) <- Mean_p + n_trap_eff * n_trap[s, t]
     }
   }
-
+  
   #  Should never have to change code below this point
   #  True latent abundance
   for(s in 1:nsite){
     N[s] ~ dpois(Lambda[s])
   }
-
+  
   #  Observation process
   for(i in 1:nobs){
     y[i] ~ dbin(P[site[i], time[i]], N[site[i]])
   }
-
+  
 }
