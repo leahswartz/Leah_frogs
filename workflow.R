@@ -24,18 +24,19 @@
         site = site_dic$site_num[match(SiteName, site_dic$site_nm)]
       )%>%
       filter(site!="NA")%>%
-      mutate(type=as.numeric(WetlandType))
+      mutate(type=as.numeric(WetlandType))%>%
+      mutate(reference=if_else(type=="3",1,1))%>%
+      mutate(created=if_else(type=="1",1,0)) %>%
+      mutate(impacted=if_else(type=="2",1,0))
+      
     
     #  Load dics
     load("data/site_dic.RData")
 ################################################################################
     #  Morph observation data
     y_obs <- morph_data(raw_dat, site_dic) %>%
-      left_join( .,cov_dat, by="site") %>%
-      mutate(created=if_else(type=="1",1,0)) %>%
-      mutate(impacted=if_else(type=="2",1,0))%>%
-      mutate(reference=if_else(type=="3",1,0))
-    covar_nm <- list("n_trap","ElevationM")
+      left_join( .,cov_dat, by="site") 
+     
 ################################################################################
     #  Call model on grouped data, species by year
     #  Remove species grouping if using multi-species model
@@ -77,7 +78,7 @@
       do(fit = 
         try(call_jags(
           x = .,
-          covs = "n_trap",
+          covs = c("n_trap"),
           model.file = "models/Nmix_sN_trapD.txt",
           n.chains = 3,
           n.iter = 500,
@@ -91,8 +92,22 @@
       do(fit = 
            try(call_jags(
              x = .,
-             covs = "n_trap","impacted","created",
+             covs = c("n_trap","impacted","created"),
              model.file = "models/Nmix_sNtN_trapD.txt",
+             n.chains = 3,
+             n.iter = 500,
+             n.burnin = 100, 
+             n.thin = 1
+           ))
+      )
+    # Fit 5 =  trap effect on detection, wetland type effect on abundance
+    fit5 <- y_obs %>%
+      group_by(sp, year) %>%
+      do(fit = 
+           try(call_jags(
+             x = .,
+             covs = c("n_trap","impacted","created"),
+             model.file = "models/Nmix_tN_trapD.txt",
              n.chains = 3,
              n.iter = 500,
              n.burnin = 100, 
