@@ -1,0 +1,41 @@
+
+    model {
+    
+    # Priors
+    omega ~ dunif(0, 1)
+    for (k in 1:4){
+    alpha.lam[k] ~ dnorm(0, 0.01)
+    p[k] ~ dunif(0, 1)
+    }
+    
+    # Likelihood
+    # Ecological model for true abundance
+    for (i in 1:R){                          # Loop over R sites (95)
+    z[i] ~ dbern(omega)                   # Latent suitability state
+    for (k in 1:4){                       # Loop over survey periods (seasons)
+    N[i,k] ~ dpois(lam.eff[i,k])       # Latent abundance state
+    lam.eff[i,k] <- z[i] * lambda[i,k]
+    log(lambda[i,k]) <- alpha.lam[k]
+    # Observation model for replicated counts
+    for (j in 1:T){                    # Loop over temporal reps (2)
+    yy[i,j,k] ~ dbin(p[k], N[i,k])   # Detection
+    # Assess model fit using Chi-squared discrepancy
+    # Compute fit statistic for observed data
+    eval[i,j,k] <- p[k] * N[i,k]
+    E[i,j,k] <- pow((yy[i,j,k] - eval[i,j,k]),2) / (eval[i,j,k] + 0.5)
+    # Generate replicate data and compute fit stats for them
+    y.new[i,j,k] ~ dbin(p[k], N[i,k])
+    E.new[i,j,k] <- pow((y.new[i,j,k] - eval[i,j,k]),2) / (eval[i,j,k]+0.5)
+    } #j
+    } #k
+    } #i
+    
+    # Derived and other quantities
+    for (k in 1:4){
+    totalN[k] <- sum(N[,k])	# Estimate total pop. size across all sites
+    mean.abundance[k] <- exp(alpha.lam[k])
+    }
+    fit <- sum(E[,,])
+    fit.new <- sum(E.new[,,])
+    }
+    

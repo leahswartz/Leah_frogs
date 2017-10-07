@@ -1,0 +1,138 @@
+##goal - full model
+##dail madsen model with occupancy component and random effect on site
+##separate estimates for each year and species
+##lambda - random effect for site, wetland type categorical covariate (reference as baseline), 
+##p - # of traps
+##omega - depth?
+# ---------------------------- Dail-Madsen Model -------------------------
+#    Basic birth-death process but birth rate isn't affected by
+#    abundance in previous year. Not realistic, but it is easy to extend
+
+
+sink(file="dm_const.txt")
+cat("
+model {
+occ <- dunif(0,1) ##occupancy prior
+#lambda ~ dunif(0, 5) 
+#gamma ~ dunif(0, 5) 
+lambda ~ dgamma(0.001, 0.001) ##abundance at site i at time j
+gamma ~ dgamma(0.001, 0.001) ##apparent survival
+omega ~ dunif(0, 1) ## recruitment/immigration - set to zero
+p ~ dunif(0, 1) ##detection
+
+##covariate priors
+n_trap_eff ~ dnorm(0, 0.01)
+created_eff ~ dnorm(0,0.01)
+impacted_eff ~ dnorm(0,0.01)
+
+#  Random effect prior
+  Tau_site <- 1/(Sd_site^2)
+  Sd_site ~ dunif(0, 200)
+  for(s in 1:nsite){
+    Site_eff[s] ~ dnorm(0, Tau_site)
+  }
+      
+
+
+for(i in 1:nSites) {
+  z[i] ~ dbern(occ) ##occupancy part
+  N[i,1] ~ dpois(lambda)
+  y[i,1] ~ dbin(p, N[i,1])
+  for(t in 2:nYears) {
+    S[i,t-1] ~ dbin(omega, N[i,t-1])
+    G[i,t-1] ~ dpois(gamma)
+    N[i,t] <- S[i,t-1] + G[i,t-1]
+    y[i,t] ~ dbin(p, N[i,t])
+    }
+  }
+}
+", fill=TRUE)
+sink()
+
+
+
+# Bundle data
+dat.const <- list(nSites=nSites, nYears=nYears, y=y)
+
+# Initial values
+# Note, JAGS will throw an error if the initial values aren't in agreement
+#       with the data. It helps to start N at large values
+Ni <- N+2
+Si <- S
+Si[] <- 2
+Gi <- Ni[,-1]-Si
+Ni[,-1] <- NA
+init.const <- function() list(lambda=runif(1, 2, 4),
+                              gamma=runif(1, 1, 3),
+                              N=Ni,
+                              omega=runif(1, 0.4, 0.6),
+                              S=Si, G=Gi,
+                              p=runif(1, 0.5, 1))
+pars.const <- c("lambda", "gamma", "omega", "p")
+
+# Compile model
+jm.const <- jags.model("dm_const.txt", dat.const, init.const,
+                       n.chains=2, n.adapt=500)
+
+# Posterior samples
+ps.const <- coda.samples(jm.const, pars.const, n.iter=1000)
+
+plot(ps.const)
+
+summary(ps.const)
+
+
+
+
+model{
+  #  Naming 
+  #  Parameter names begin with a capitalized letter
+  #  Data are all lower case
+   
+  #  Priors - try different priors
+  #  Mean abundance
+  Mean_n ~ dnorm(n_mu, n_tau)T(0,)
+  #Mean_n ~ dgamma(0.001, 0.001)
+  
+  #  Mean detection
+  Mean_p ~ dnorm(0, 0.35)T(-10, 10)
+  
+  #trap covariate
+  n_trap_eff ~ dnorm(0, 0.01)
+  
+   #covariate - wetland type prior
+   # type_eff ~ dunif(-10,10)
+   # Type_eff ~ dnorm(0,0.01)
+   #for(i in 1:3){
+   #Type_eff[i] ~ dnorm(0,0.01)
+   #}
+   created_eff ~ dnorm(0,0.01)
+   impacted_eff ~ dnorm(0,0.01)
+    
+  #  Random effect prior
+  Tau_site <- 1/(Sd_site^2)
+  Sd_site ~ dunif(0, 200)
+  for(s in 1:nsite){
+    Site_eff[s] ~ dnorm(0, Tau_site)
+  }
+      
+  #  Linear predictors
+
+  for(s in 1:nsite){
+    log(Lambda[s]) <- Mean_n + Site_eff[s]+impacted_eff*impacted[s]+created_eff*created[s] 
+  for(t in 1:ntimes[s]){
+      logit(P[s, t]) <- Mean_p + n_trap_eff * n_trap[s, t]
+    }
+  }
+  
+  #  Should never have to change code below this point
+  #  True latent abundance
+  for(s in 1:nsite){
+    N[s] ~ dpois(Lambda[s])
+  }
+  
+  #  Observation process
+  for(i in 1:nobs){
+    y[i] ~ dbinom(P[site[i], time[i]], N[site[i]])
+  }
+}

@@ -35,8 +35,84 @@
 ################################################################################
     #  Morph observation data
     y_obs <- morph_data(raw_dat, site_dic) %>%
-      left_join( .,cov_dat, by="site") 
+      left_join( .,cov_dat, by="site") %>%
+      filter(year == 2)
+    
+    type_cov <- y_obs %>%
+      ungroup() %>%
+      select(site, impacted, created) %>%
+      distinct %>%
+      arrange(site) %>%
+      select(impacted, created)
+    
+    n_traps <- y_obs %>%
+      ungroup() %>%
+      select(site, year, prim, n_trap) %>%
+      spread(prim, n_trap, -site, -year)
+    
+    new_site <- as.numeric(as.factor(y_obs$site))
+    
+    #  Data as a list
+    jdat <- list(
+      "species" = y_obs$sp,
+      "nspecies" = length(unique(y_obs$sp)),
+      "nsite" = length(unique(y_obs$site)),
+      "ntimes" = y_obs %>% 
+        group_by(site) %>% 
+        summarise(ntimes = max(occ)) %>% 
+        .$ntimes,
+      "nsec" = 2,
+      "nobs" = nrow(y_obs),
+      "n_mu" = 10,
+      "n_tau" = 1/100,
+      "site" = new_site,
+      "time" = y_obs$prim,
+      "occs" = y_obs$sec,
+      "y" = y_obs$cnt,
+      "impacted" = as.numeric(type_cov$impacted),
+      "created" = as.numeric(type_cov$created)
+    )
      
+    N_init <- y_obs %>%
+      group_by(sp, site) %>% 
+      summarise(
+        N = sum(cnt, na.rm = T)
+      ) %>%
+      .$N
+    nn <- (matrix(N_init, nrow = 4) + 2) * 100
+    
+    #  Initial Values
+    inits <- function(){
+      list(
+        Mean_n = rpois(1, mean(y_obs$cnt)),
+        Mean_p = runif(1, 0.02, 0.5),
+        N = nn
+      )
+    }
+    
+    #  Parameters to monitor
+    parms <- c("Lambda", "Mean_n", "Mean_p", "P", "N", "Site_eff", "created_eff", "impacted_eff")
+    
+    fit <- jags(
+      jdat,
+      inits, 
+      parms,
+      model.file = "models/Nmix_sNtN_trapD.txt",
+      n.chains = 3,
+      n.iter = 500,
+      n.burnin = 100, 
+      n.thin = 1
+    )
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 ################################################################################
     #  Call model on grouped data, species by year
     #  Remove species grouping if using multi-species model

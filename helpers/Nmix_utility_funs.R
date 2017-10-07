@@ -1,4 +1,4 @@
-    #  Helper functions related to Leah's dissertation
+    #  Helper functions related to Leah's thesis
     #  Josh Nowak
     #  03/2017
     #  Lots of hard coded one off solutions
@@ -84,14 +84,14 @@
       new_site <- as.numeric(as.factor(x$site))
       
       #  Gather covariates in a named list
-      if(is.null(covs)){
-        cov_vals <- list()
-      }else{
-        cov_vals <- lapply(covs, function(y){
-          pretty_cov(x, y)
-        })
-        names(cov_vals) <- covs
-      }
+      # if(is.null(covs)){
+      #   cov_vals <- list()
+      # }else{
+      #   cov_vals <- lapply(covs, function(y){
+      #     pretty_cov(x, y)
+      #   })
+      #   names(cov_vals) <- covs
+      # }
       
       #  Data as a list
       jdat <- c(cov_vals, list(

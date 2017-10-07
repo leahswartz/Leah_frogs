@@ -1,0 +1,120 @@
+model{
+  #  Naming 
+  #  Parameter names begin with a capitalized letter
+  #  Data are all lower case
+  
+  #  Priors - try different priors
+  
+  #  Mean abundance
+  for(i in 1:nspecies){
+    Mean_n[i] ~ dnorm(n_mu, n_tau)T(0,)
+  }
+  #Mean_n ~ dgamma(0.001, 0.001)
+  
+  #  Mean detection
+  Mean_p ~ dnorm(0, 0.35)T(-10, 10)
+  
+  #trap covariate
+  n_trap_eff ~ dnorm(0, 0.01)
+  
+  #covariate - wetland type prior
+  # type_eff ~ dunif(-10,10)
+  # Type_eff ~ dnorm(0,0.01)
+  #for(i in 1:3){
+  #Type_eff[i] ~ dnorm(0,0.01)
+  #}
+  
+ ##lambda wetland type prior
+  for(i in 1:nspecies){
+    created_eff[i] ~ dnorm(0,0.01)
+    impacted_eff[i] ~ dnorm(0,0.01)
+  }
+  
+ ##phi wetland type prior
+  for(i in 1:nspecies){
+    created_eff2[i] ~ dnorm(0,0.01)
+    impacted_eff2[i] ~ dnorm(0,0.01)
+  }  
+  
+  occ_eff ~ dnorm(0, 0.35)
+  
+  ##occupancy prior - fixed effect 
+  for (sp in 1:nspecies){
+  for (s in 1:nsite){
+  Mean_phi[sp,s]~dnorm(0,0.001)
+  }
+  }
+  
+  #  Random effect lambda prior
+  for(sp in 1:nspecies){
+    Tau_site[sp] <- 1/(Sd_site[sp]^2)
+    Sd_site[sp] ~ dunif(0, 200)
+    for(s in 1:nsite){
+      Site_eff[sp,s] ~ dnorm(0, Tau_site[sp])
+    }
+  }   
+  
+  ## Random site effect phi prior
+  #for(sp in 1:nspecies){
+   # Tau_site2[sp] <- 1/(Sd_site[sp]^2)
+   # Sd_site2[sp] ~ dunif(0, 200)
+   # for(s in 1:nsite){
+    #  Site_eff2[sp,s] ~ dnorm(0, Tau_site2[sp])
+   # }
+  #} 
+  
+  
+  
+  #  Linear predictors
+  for(y in 1:nyear){
+   for(sp in 1:nspecies){
+    for(s in 1:nsite){
+      Lambda[y, sp, s] <- exp(Mean_n[sp] + Site_eff[sp,s] + impacted_eff[sp] * impacted[s] + created_eff[sp] * created[s])
+      logit(Phi[y, sp, s]) <- Mean_phi[sp,s] + impacted_eff2[sp] * impacted[s] + created_eff2[sp] * created[s]
+      w[y, sp, s] ~ dbern(Phi[y, sp, s])
+      for(t in 1:nprim[s]){
+        logit(P[y, sp, s, t]) <- Mean_p
+        
+     }
+    }
+   }
+  }
+  
+  #  Should never have to change code below this point
+  #  True latent abundance
+  for(sp in 1:nspecies){
+   for(s in 1:nsite){
+   for(y in 1:nyear){
+    N[sp,s,y,1] ~ dpois(Lambda[y,sp,s])
+   }
+  }
+  }
+  
+  for(s in 1:nsite){
+  for(sp in 1:nspecies){
+    gamma[s,sp] ~ dbeta(1, 1)
+  }
+  }
+
+  for(sp in 1:nspecies){
+    for(s in 1:nsite){
+    for(y in 1:nyear){
+       for(t in 2:nprim[s]){
+          N[sp,s,y,t] ~ dbinom(gamma[s,sp], N[sp, s, y, t-1] * w[y,sp,s])
+      }
+    }
+   }
+  }
+
+  #  Observation process
+  for(i in 1:nobs){
+    y[i] ~ dbinom(P[year[i],species[i], site[i], time[i]], N[species[i], site[i], year[i],time[i]])
+  }
+  
+  
+  
+}
+
+##add loop for year before species
+##might need to change things for 26 vs 28 sites
+##add occupancy line

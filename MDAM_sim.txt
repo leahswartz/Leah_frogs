@@ -1,0 +1,45 @@
+
+      model{
+      # Priors
+      # Linear predictor on abundance, setup for species variation only,
+      # abundance assumed the same at every site
+      for(i in 1:n.sp){
+      log.n[i] ~ dnorm(0, 0.001)
+      mu.lambda[i] <- exp(log.n[i])
+      }
+      # Population size of each species at each site
+      for(i in 1:n.sites){
+      for(k in 1:n.sp){
+      N[i,k] ~ dpois(mu.lambda[k])
+      }
+      }
+      # Individual observer detection probability, no variation
+      for(i in 1:n.observers){
+      p[i] ~ dbeta(1, 1)
+      }
+      
+      # Likelihood
+      for(i in 1:n.obs){
+      # Indices always follow site, reps, species order
+      # Capture probabilities
+      # Seen by observer #1 
+      cp[i,1] <- p[prim[i]]
+      # Seen by observer #2 and not seen by observer #1
+      cp[i,2] <- p[sec[i]] * (1 - p[prim[i]])
+      # Seen by somebody
+      pcap[i] <- sum(cp[i,])
+      # Not seen by either observer
+      pnocap[i] <- 1 - pcap[i]
+      # Adjust the probability of capture to the prop available
+      # 2 is for number of outcomes (probabilities for obs1 and obs2)
+      for(j in 1:2){
+      muc[i,j] <- cp[i,j]/pcap[i]
+      }
+      # Realizations
+      # Number captured (ncap) and population size (N)
+      ncap[i] ~ dbin(pcap[i], round(N[site[i],sp[i]]))
+      y[i,] ~ dmulti(cp[i,1:2], ncap[i])
+      
+      }
+      }
+      
